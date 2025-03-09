@@ -1,0 +1,68 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql_db
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_DATABASE: techChallengeDB
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - microservices-network
+
+  rabbitmq:
+    image: rabbitmq:4.0-management
+    container_name: rabbitmq_broker
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - microservices-network
+
+  cliente-persona-service:
+    build: ./cliente-persona
+    env_file:
+      - .env
+    container_name: cliente_service
+    restart: always
+    depends_on:
+      - mysql
+      - rabbitmq
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_DOCKER_URL}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      SPRING_RABBITMQ_HOST: rabbitmq
+    networks:
+      - microservices-network
+
+  cuenta-movimiento-service:
+    build: ./cuenta-movimiento
+    env_file:
+      - .env
+    container_name: cuenta_service
+    restart: always
+    depends_on:
+      - mysql
+      - rabbitmq
+      - cliente-persona-service
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_DOCKER_URL}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      SPRING_RABBITMQ_HOST: rabbitmq
+    networks:
+      - microservices-network
+
+volumes:
+  mysql_data:
+
+networks:
+  microservices-network:
+    driver: bridge
